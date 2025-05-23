@@ -23,7 +23,7 @@ COPY . .
 RUN mkdir -p db logs
 
 # Set permissions
-RUN chmod +x setup.rb main.rb
+RUN chmod +x main.rb
 
 # Create non-root user
 RUN addgroup -g 1000 botuser && \
