@@ -359,35 +359,15 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
         user = UserService.find_or_create_user(message.from)
         chat_session = UserService.find_or_create_chat(message.chat)
 
-        # Check if user can send messages
-        unless UserService.can_user_message?(user, chat_session)
-          if user.banned?
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: "Пішов нахуй",
-              reply_to_message_id: message.message_id
-            )
-          elsif user.muted?
-            remaining_time = user.banned_until ? 
-              ((user.banned_until - Time.current) / 60).round : 0
-            bot.api.send_message(
-              chat_id: message.chat.id,
-              text: "Я з тобою не піжжу ше #{remaining_time} хвилин",
-              reply_to_message_id: message.message_id
-            )
-          end
-          next
-        end
-
-        # Rate limiting
-        unless rate_limiter.check_rate_limit(user.telegram_id, chat_session.chat_id)
-          bot.api.send_message(
-            chat_id: message.chat.id,
-            text: "🐌 Rate limit exceeded. Try again later.",
-            reply_to_message_id: message.message_id
-          )
-          next
-        end
+        # # Rate limiting
+        # unless rate_limiter.check_rate_limit(user.telegram_id, chat_session.chat_id)
+        #   bot.api.send_message(
+        #     chat_id: message.chat.id,
+        #     text: "🐌 Rate limit exceeded. Try again later.",
+        #     reply_to_message_id: message.message_id
+        #   )
+        #   next
+        # end
 
         # Update user activity and award points for participation
         user.update!(
@@ -432,7 +412,7 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
             else
               bot.api.send_message(
                 chat_id: message.chat.id,
-                text: "❌ You don't have permission to use this command.",
+                text: "Куда поліз?",
                 reply_to_message_id: message.message_id
               )
               next
@@ -445,6 +425,25 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
 
         # Handle Claude mentions
         if text.include?("@#{BOT_USERNAME}") || mention_by_nic_name?(text)
+          # Check if user can send messages
+          unless UserService.can_user_message?(user, chat_session)
+            if user.banned?
+              bot.api.send_message(
+                chat_id: message.chat.id,
+                text: "Пішов нахуй",
+                reply_to_message_id: message.message_id
+              )
+            elsif user.muted?
+              remaining_time = user.banned_until ? 
+                ((user.banned_until - Time.current) / 60).round : 0
+              bot.api.send_message(
+                chat_id: message.chat.id,
+                text: "Я з тобою не піжжу ше #{remaining_time} хвилин",
+                reply_to_message_id: message.message_id
+              )
+            end
+            next
+          end
           logger.info("Claude mention detected from user #{user.telegram_id}")
           handle_claude_mention(bot, message, user, chat_session, text, claude_service, logger)
         end

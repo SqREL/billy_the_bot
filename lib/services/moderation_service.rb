@@ -5,8 +5,7 @@ class ModerationService
   ].freeze
 
   TOXIC_KEYWORDS = [
-    'hate', 'stupid', 'idiot', 'moron', 'loser', 'worthless',
-    'disgusting', 'pathetic', 'garbage', 'trash'
+    'хуйпіздазалупа'
   ].freeze
 
   def initialize(claude_service = ClaudeService.new)
