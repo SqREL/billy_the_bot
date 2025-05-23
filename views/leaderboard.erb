@@ -1,0 +1,197 @@
+<% @page_title = "Points Leaderboard" %>
+
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="text-center">
+            <h2><i class="fas fa-trophy text-warning me-2"></i>Points Leaderboard</h2>
+            <p class="text-muted">Top users by points earned</p>
+        </div>
+    </div>
+</div>
+
+<!-- Top 3 Podium -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="row justify-content-center">
+            <% @leaderboard.first(3).each_with_index do |user, index| %>
+            <div class="col-md-4 mb-3">
+                <div class="stat-card text-center <%= 'border-warning' if index == 0 %>">
+                    <div class="p-4">
+                        <!-- Medal -->
+                        <div class="mb-3">
+                            <% case index
+                               when 0 %>
+                                <i class="fas fa-crown fa-3x text-warning"></i>
+                            <% when 1 %>
+                                <i class="fas fa-medal fa-3x" style="color: #C0C0C0;"></i>
+                            <% when 2 %>
+                                <i class="fas fa-medal fa-3x" style="color: #CD7F32;"></i>
+                            <% end %>
+                        </div>
+                        
+                        <!-- User Info -->
+                        <div class="user-avatar mx-auto mb-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                            <%= (user.first_name || 'U')[0].upcase %>
+                        </div>
+                        
+                        <h5 class="mb-1"><%= user.display_name %></h5>
+                        <div class="points-display mb-2">
+                            <i class="fas fa-star me-1"></i><%= user.points %> points
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <small class="text-muted">Messages</small>
+                                <div class="fw-bold"><%= user.message_count %></div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Rank</small>
+                                <div class="fw-bold">#<%= index + 1 %></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <% end %>
+        </div>
+    </div>
+</div>
+
+<!-- Full Leaderboard Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="stat-card">
+            <div class="p-3 border-bottom">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Full Rankings</h5>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="10%">Rank</th>
+                            <th width="40%">User</th>
+                            <th width="15%">Points</th>
+                            <th width="15%">Messages</th>
+                            <th width="20%">Last Active</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% @leaderboard.each_with_index do |user, index| %>
+                        <tr class="<%= 'table-warning' if index < 3 %>">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <% case index
+                                       when 0 %>
+                                        <i class="fas fa-crown text-warning me-2"></i>
+                                    <% when 1 %>
+                                        <i class="fas fa-medal me-2" style="color: #C0C0C0;"></i>
+                                    <% when 2 %>
+                                        <i class="fas fa-medal me-2" style="color: #CD7F32;"></i>
+                                    <% else %>
+                                        <span class="fw-bold text-muted me-2">#<%= index + 1 %></span>
+                                    <% end %>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar me-3">
+                                        <%= (user.first_name || 'U')[0].upcase %>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold"><%= user.display_name %></div>
+                                        <small class="text-muted">
+                                            <span class="badge bg-<%= user.admin? ? 'danger' : user.moderator? ? 'warning text-dark' : 'secondary' %>">
+                                                <%= user.role.capitalize %>
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="points-display">
+                                    <i class="fas fa-star me-1"></i><%= user.points %>
+                                </div>
+                                <% if user.total_points_earned > user.points %>
+                                    <small class="text-muted d-block">Earned: <%= user.total_points_earned %></small>
+                                <% end %>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark"><%= user.message_count %></span>
+                            </td>
+                            <td>
+                                <% if user.last_interaction %>
+                                    <small class="text-muted">
+                                        <%= time_ago_in_words(user.last_interaction) %> ago
+                                    </small>
+                                <% else %>
+                                    <small class="text-muted">Never</small>
+                                <% end %>
+                            </td>
+                        </tr>
+                        <% end %>
+                    </tbody>
+                </table>
+            </div>
+            
+            <% if @leaderboard.empty? %>
+            <div class="text-center py-5">
+                <i class="fas fa-trophy fa-3x text-muted mb-3"></i>
+                <h4>No Users Yet</h4>
+                <p class="text-muted">Start using the bot to see the leaderboard!</p>
+            </div>
+            <% end %>
+        </div>
+    </div>
+</div>
+
+<!-- Points Stats -->
+<div class="row mt-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+            <h4><%= @leaderboard.size %></h4>
+            <p class="text-muted mb-0">Total Users</p>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-star fa-2x text-warning mb-2"></i>
+            <h4><%= @leaderboard.sum(&:points) %></h4>
+            <p class="text-muted mb-0">Total Points</p>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-comments fa-2x text-info mb-2"></i>
+            <h4><%= @leaderboard.sum(&:message_count) %></h4>
+            <p class="text-muted mb-0">Total Messages</p>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+            <h4>
+                <% if @leaderboard.any? %>
+                    <%= (@leaderboard.sum(&:points).to_f / @leaderboard.size).round(1) %>
+                <% else %>
+                    0
+                <% end %>
+            </h4>
+            <p class="text-muted mb-0">Avg Points</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function timeAgoInWords(date) {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours`;
+    return `${Math.floor(diffInSeconds / 86400)} days`;
+}
+</script>

@@ -1,0 +1,297 @@
+<% @page_title = "Analytics" %>
+
+<!-- Overview Stats -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+            <h4><%= @user_stats[:by_role].values.sum %></h4>
+            <p class="text-muted mb-0">Total Users</p>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-star fa-2x text-warning mb-2"></i>
+            <h4><%= @points_stats[:total_earned] %></h4>
+            <p class="text-muted mb-0">Points Distributed</p>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-comments fa-2x text-info mb-2"></i>
+            <h4><%= @activity_stats[:messages_by_day].values.sum %></h4>
+            <p class="text-muted mb-0">Messages (30 days)</p>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stat-card p-3 text-center">
+            <i class="fas fa-gavel fa-2x text-danger mb-2"></i>
+            <h4><%= @activity_stats[:moderation_actions_by_day].values.sum %></h4>
+            <p class="text-muted mb-0">Mod Actions (30 days)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-chart-line me-2"></i>User Registration Trend</h5>
+            <canvas id="registrationChart" height="300"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-star me-2"></i>Points Distribution</h5>
+            <canvas id="pointsChart" height="300"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- User Stats -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-users me-2"></i>Users by Role</h5>
+            <div class="row">
+                <% @user_stats[:by_role].each do |role, count| %>
+                <div class="col-4 text-center mb-3">
+                    <div class="p-3 rounded bg-light">
+                        <h4 class="mb-1 text-<%= role == 'admin' ? 'danger' : role == 'moderator' ? 'warning' : 'secondary' %>">
+                            <%= count %>
+                        </h4>
+                        <small class="text-muted"><%= role.capitalize %>s</small>
+                    </div>
+                </div>
+                <% end %>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-user-check me-2"></i>Users by Status</h5>
+            <div class="row">
+                <% @user_stats[:by_status].each do |status, count| %>
+                <div class="col-3 text-center mb-3">
+                    <div class="p-3 rounded bg-light">
+                        <h4 class="mb-1 text-<%= 
+                            case status 
+                            when 'active' then 'success'
+                            when 'warned' then 'warning'
+                            when 'muted' then 'info'
+                            when 'banned' then 'danger'
+                            else 'secondary'
+                            end
+                        %>">
+                            <%= count %>
+                        </h4>
+                        <small class="text-muted"><%= status.capitalize %></small>
+                    </div>
+                </div>
+                <% end %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Points Analytics -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-trophy me-2"></i>Top Point Earners</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>User</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% @points_stats[:top_earners].each_with_index do |earner, index| %>
+                        <tr>
+                            <td>
+                                <% case index
+                                   when 0 %>
+                                    <i class="fas fa-crown text-warning"></i>
+                                <% when 1 %>
+                                    <i class="fas fa-medal" style="color: #C0C0C0;"></i>
+                                <% when 2 %>
+                                    <i class="fas fa-medal" style="color: #CD7F32;"></i>
+                                <% else %>
+                                    <span class="text-muted">#<%= index + 1 %></span>
+                                <% end %>
+                            </td>
+                            <td>
+                                <strong><%= earner[0] || earner[1] || "User" %></strong>
+                                <% if earner[1] %>
+                                    <br><small class="text-info">@<%= earner[1] %></small>
+                                <% end %>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary"><%= earner[2] %> pts</span>
+                            </td>
+                        </tr>
+                        <% end %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-exchange-alt me-2"></i>Points Activity</h5>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted">Total Earned</span>
+                    <span class="fw-bold text-success">+<%= @points_stats[:total_earned] %></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted">Total Spent</span>
+                    <span class="fw-bold text-danger">-<%= @points_stats[:total_spent] %></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted">Net Points</span>
+                    <span class="fw-bold text-primary"><%= @points_stats[:total_earned] - @points_stats[:total_spent] %></span>
+                </div>
+            </div>
+            
+            <h6 class="mb-2">Transaction Types</h6>
+            <% @points_stats[:transactions_by_type].each do |type, count| %>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <small class="text-muted"><%= (type || 'unknown').to_s.humanize %></small>
+                <small class="fw-bold"><%= count %></small>
+            </div>
+            <% end %>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Stats -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Most Active Chats</h5>
+            <div class="row">
+                <% @activity_stats[:most_active_chats].each_with_index do |chat_data, index| %>
+                    <% chat_title, chat_id = chat_data[0] %>
+                    <% message_count = chat_data[1] %>
+                    <div class="col-lg-4 col-md-6 mb-3">
+                        <div class="p-3 rounded bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1"><%= truncate_text(chat_title || "Chat #{chat_id}", 20) %></h6>
+                                    <small class="text-muted">ID: <%= chat_id %></small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-primary"><%= message_count %></div>
+                                    <small class="text-muted">messages</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% end %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity Timeline -->
+<div class="row">
+    <div class="col-12">
+        <div class="stat-card p-4">
+            <h5 class="mb-3"><i class="fas fa-clock me-2"></i>Activity Timeline (Last 30 Days)</h5>
+            <canvas id="activityChart" height="100"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Registration Chart
+const registrationCtx = document.getElementById('registrationChart').getContext('2d');
+const registrationData = <%= @user_stats[:registrations_last_30_days].to_json.html_safe %>;
+
+new Chart(registrationCtx, {
+    type: 'line',
+    data: {
+        labels: Object.keys(registrationData),
+        datasets: [{
+            label: 'New Users',
+            data: Object.values(registrationData),
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Points Chart
+const pointsCtx = document.getElementById('pointsChart').getContext('2d');
+const pointsData = <%= @points_stats[:points_distribution_last_7_days].to_json.html_safe %>;
+
+new Chart(pointsCtx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(pointsData),
+        datasets: [{
+            label: 'Points Distributed',
+            data: Object.values(pointsData),
+            backgroundColor: '#f093fb',
+            borderColor: '#f5576c',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Activity Chart
+const activityCtx = document.getElementById('activityChart').getContext('2d');
+const activityData = <%= @activity_stats[:messages_by_day].to_json.html_safe %>;
+
+new Chart(activityCtx, {
+    type: 'line',
+    data: {
+        labels: Object.keys(activityData),
+        datasets: [{
+            label: 'Messages',
+            data: Object.values(activityData),
+            borderColor: '#17a2b8',
+            backgroundColor: 'rgba(23, 162, 184, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
