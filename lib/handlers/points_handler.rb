@@ -4,20 +4,17 @@ class PointsHandler
   end
 
   def handle_points_command(message, user, chat_session, command, args)
-    case command
-    when '/points'
-      handle_points_info(message, user, args)
-    when '/give'
-      handle_give_points(message, user, chat_session, args)
-    when '/leaderboard', '/top'
-      handle_leaderboard(message, chat_session, args)
-    when '/daily'
-      handle_daily_bonus(message, user, chat_session)
-    when '/transfer'
-      handle_transfer_points(message, user, args)
-    else
-      false
-    end
+    command_handlers = {
+      '/points' => -> { handle_points_info(message, user, args) },
+      '/give' => -> { handle_give_points(message, user, chat_session, args) },
+      '/leaderboard' => -> { handle_leaderboard(message, chat_session, args) },
+      '/top' => -> { handle_leaderboard(message, chat_session, args) },
+      '/daily' => -> { handle_daily_bonus(message, user, chat_session) },
+      '/transfer' => -> { handle_transfer_points(message, user, args) }
+    }
+
+    handler = command_handlers[command]
+    handler ? handler.call : false
   end
 
   private

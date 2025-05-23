@@ -5,30 +5,22 @@ class AdminHandler
   end
 
   def handle_admin_command(message, user, chat_session, command, args)
-    return unless user.admin? || user.moderator?
+    return false unless user.admin? || user.moderator?
 
-    case command
-    when '/ban'
-      handle_ban_command(message, user, args)
-    when '/unban'
-      handle_unban_command(message, user, args)
-    when '/mute'
-      handle_mute_command(message, user, args)
-    when '/warn'
-      handle_warn_command(message, user, args)
-    when '/promote'
-      handle_promote_command(message, user, args)
-    when '/demote'
-      handle_demote_command(message, user, args)
-    when '/stats'
-      handle_stats_command(message, user, chat_session, args)
-    when '/moderation'
-      handle_moderation_command(message, user, chat_session, args)
-    when '/cleanup'
-      handle_cleanup_command(message, user)
-    else
-      false
-    end
+    command_handlers = {
+      '/ban' => -> { handle_ban_command(message, user, args) },
+      '/unban' => -> { handle_unban_command(message, user, args) },
+      '/mute' => -> { handle_mute_command(message, user, args) },
+      '/warn' => -> { handle_warn_command(message, user, args) },
+      '/promote' => -> { handle_promote_command(message, user, args) },
+      '/demote' => -> { handle_demote_command(message, user, args) },
+      '/stats' => -> { handle_stats_command(message, user, chat_session, args) },
+      '/moderation' => -> { handle_moderation_command(message, user, chat_session, args) },
+      '/cleanup' => -> { handle_cleanup_command(message, user) }
+    }
+
+    handler = command_handlers[command]
+    handler ? handler.call : false
   end
 
   private

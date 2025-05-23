@@ -121,20 +121,42 @@ Auto-delete flagged messages
 Custom thresholds
 Welcome messages
 🏗️ Architecture
-Database Schema
-Users: Telegram user data, roles, status
-ChatSessions: Chat configuration and settings
-Messages: Content, analysis results, responses
-ModerationLogs: Audit trail of all actions
-Service Layer
-ClaudeService: Claude API integration and response generation
-ModerationService: Content analysis and automatic actions
-UserService: User and chat management
-RateLimiter: Spam protection and rate limiting
-Handler System
-AdminHandler: Administrative command processing
-MessageHandler: Content processing and routing
-ErrorHandler: Graceful error handling and recovery
+
+## New Modular Structure (Recently Refactored)
+```
+lib/
+├── bot_manager.rb              # Main bot orchestration
+├── message_handler.rb          # Message processing pipeline
+├── command_handlers.rb         # Basic command handling
+├── claude_interaction_handler.rb # Claude AI interactions
+├── background_tasks.rb         # Scheduled maintenance tasks
+├── handlers/
+│   ├── admin_handler.rb        # Admin command processing
+│   └── points_handler.rb       # Points system commands
+├── services/
+│   ├── claude_service.rb       # Claude API integration
+│   ├── moderation_service.rb   # Content moderation
+│   ├── user_service.rb         # User management
+│   └── points_service.rb       # Points system logic
+├── middleware/
+│   └── rate_limiter.rb         # Rate limiting
+└── models.rb                   # Database models
+```
+
+## Database Schema
+- **Users**: Telegram user data, roles, status
+- **ChatSessions**: Chat configuration and settings  
+- **Messages**: Content, analysis results, responses
+- **ModerationLogs**: Audit trail of all actions
+- **PointTransactions**: Points system transactions
+- **MessageTemplates**: Admin message templates
+- **AdminSessions**: Web admin authentication
+
+## Key Components
+- **BotManager**: Orchestrates bot startup and service initialization
+- **MessageHandler**: Processes all incoming messages and routes to appropriate handlers
+- **ClaudeInteractionHandler**: Manages AI conversations with context and error handling
+- **BackgroundTasks**: Automated cleanup and maintenance jobs
 🚀 Deployment
 Docker Deployment
 dockerfile

@@ -17,19 +17,10 @@ class ClaudeService
         model: @model,
         max_tokens: ENV['MAX_CLAUDE_TOKENS']&.to_i || 1000,
         system: system_prompt,
-        messages: [
-          { role: 'user', content: user_message }
-        ]
+        messages: [{ role: 'user', content: user_message }]
       )
 
-      # Extract response text properly
-      if response.content.is_a?(Array) && response.content.first&.text
-        response.content.first.text
-      elsif response.content.is_a?(String)
-        response.content
-      else
-        "I received your message but couldn't generate a proper response."
-      end
+      extract_response_text(response)
 
     rescue Anthropic::APIError => e
       puts "Claude API error: #{e.message}"
@@ -55,14 +46,7 @@ class ClaudeService
         ]
       )
 
-      result = if response.content.is_a?(Array) && response.content.first&.text
-                 response.content.first.text
-               elsif response.content.is_a?(String)
-                 response.content
-               else
-                 '{"violence_score": 0.0, "toxicity_score": 0.0, "safe": true}'
-               end
-
+      result = extract_response_text(response) || '{"violence_score": 0.0, "toxicity_score": 0.0, "safe": true}'
       parse_analysis_result(result)
     rescue => e
       puts "Content analysis error: #{e.message}"
@@ -71,6 +55,16 @@ class ClaudeService
   end
 
   private
+
+  def extract_response_text(response)
+    if response.content.is_a?(Array) && response.content.first&.text
+      response.content.first.text
+    elsif response.content.is_a?(String)
+      response.content
+    else
+      "I received your message but couldn't generate a proper response."
+    end
+  end
 
   def build_system_prompt(context)
     base_prompt = <<~PROMPT

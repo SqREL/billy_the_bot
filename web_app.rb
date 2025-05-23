@@ -36,9 +36,10 @@ def extend_session!
   session[:expires_at] = 24.hours.from_now.to_i
 end
 
-# Middleware
+# Authentication middleware
 before do
-  pass if request.path_info == '/login' || request.path_info.start_with?('/assets')
+  exempt_paths = ['/login'] + Dir.glob('public/**/*').map { |f| f.sub('public', '') }
+  pass if exempt_paths.any? { |path| request.path_info.start_with?(path) }
   redirect '/login' unless authenticated?
 end
 
