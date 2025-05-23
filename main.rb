@@ -364,7 +364,7 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
           if user.banned?
             bot.api.send_message(
               chat_id: message.chat.id,
-              text: "🚫 You are banned from using this bot.",
+              text: "Пішов нахуй",
               reply_to_message_id: message.message_id
             )
           elsif user.muted?
@@ -372,7 +372,7 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
               ((user.banned_until - Time.current) / 60).round : 0
             bot.api.send_message(
               chat_id: message.chat.id,
-              text: "🔇 You are muted for #{remaining_time} more minutes.",
+              text: "Я з тобою не піжжу ше #{remaining_time} хвилин",
               reply_to_message_id: message.message_id
             )
           end
