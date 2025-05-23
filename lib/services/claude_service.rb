@@ -8,7 +8,7 @@ class ClaudeService
 
   def generate_response(message, context = {})
     user_message = message.strip
-    return nil if user_message.empty?
+    return "Please provide a question or message." if user_message.empty?
 
     begin
       system_prompt = build_system_prompt(context)
@@ -22,15 +22,27 @@ class ClaudeService
         ]
       )
 
-      response.content.first.text
-    rescue => e
+      # Extract response text properly
+      if response.content.is_a?(Array) && response.content.first&.text
+        response.content.first.text
+      elsif response.content.is_a?(String)
+        response.content
+      else
+        "I received your message but couldn't generate a proper response."
+      end
+
+    rescue Anthropic::APIError => e
       puts "Claude API error: #{e.message}"
-      "Sorry, I'm having trouble processing your request right now."
+      "I'm having trouble connecting to my AI service right now. Please try again later."
+    rescue => e
+      puts "Unexpected error: #{e.class}: #{e.message}"
+      puts e.backtrace.first(5)
+      "Sorry, I encountered an unexpected error. Please try again."
     end
   end
 
   def analyze_content(message)
-    return { violence_score: 0, toxicity_score: 0, safe: true } if message.strip.empty?
+    return { violence_score: 0.0, toxicity_score: 0.0, safe: true } if message.strip.empty?
 
     begin
       analysis_prompt = build_analysis_prompt(message)
@@ -43,25 +55,46 @@ class ClaudeService
         ]
       )
 
-      result = response.content.first.text
+      result = if response.content.is_a?(Array) && response.content.first&.text
+                 response.content.first.text
+               elsif response.content.is_a?(String)
+                 response.content
+               else
+                 '{"violence_score": 0.0, "toxicity_score": 0.0, "safe": true}'
+               end
+
       parse_analysis_result(result)
     rescue => e
       puts "Content analysis error: #{e.message}"
-      { violence_score: 0, toxicity_score: 0, safe: true }
+      { violence_score: 0.0, toxicity_score: 0.0, safe: true }
     end
   end
 
   private
 
   def build_system_prompt(context)
-    base_prompt = "You are a helpful AI assistant in a Telegram chat. Be concise and friendly."
+    base_prompt = <<~PROMPT
+      You are a helpful AI assistant in a Telegram chat. Be concise, friendly, and helpful.
+      
+      Current context:
+      - User: #{context[:user_name] || 'Unknown'}
+      - Role: #{context[:user_role] || 'user'}
+      - Points: #{context[:user_points] || 0}
+      - Chat type: #{context[:chat_type] || 'unknown'}
+      
+      Guidelines:
+      - Keep responses under 500 words unless specifically asked for more detail
+      - Be conversational and engaging
+      - If asked about points or bot features, provide helpful information
+      - Use emojis occasionally to make responses more friendly
+    PROMPT
     
-    if context[:chat_type] == 'group'
-      base_prompt += " You're in a group chat, so keep responses brief unless specifically asked for detail."
+    if context[:chat_type] == 'group' || context[:chat_type] == 'supergroup'
+      base_prompt += "\n- This is a group chat, so keep responses brief and relevant to avoid spam"
     end
 
-    if context[:user_role] == 'admin'
-      base_prompt += " The user is an admin, so you can provide more technical information if needed."
+    if context[:user_role] == 'admin' || context[:user_role] == 'moderator'
+      base_prompt += "\n- User has moderation privileges, you can provide technical information"
     end
 
     base_prompt
@@ -69,39 +102,44 @@ class ClaudeService
 
   def build_analysis_prompt(message)
     <<~PROMPT
-      Analyze this message for violence and toxicity. Return your analysis in JSON format:
+      Analyze this message for violence and toxicity. Return ONLY valid JSON format.
 
-      Message: "#{message}"
+      Message: "#{message.gsub('"', '\"')}"
 
-      Provide scores from 0.0 (completely safe) to 1.0 (extremely problematic):
+      Provide scores from 0.0 (safe) to 1.0 (extremely problematic):
       - violence_score: How violent or threatening is the content?
       - toxicity_score: How toxic, offensive, or harmful is the content?
-      - safe: Boolean indicating if the message is safe for a public chat
+      - safe: Boolean indicating if message is safe for public chat
 
       Consider context and intent. Mild profanity might have low toxicity if not directed at someone.
       
-      Respond only with valid JSON in this format:
+      Respond ONLY with this JSON format:
       {"violence_score": 0.0, "toxicity_score": 0.0, "safe": true}
     PROMPT
   end
 
   def parse_analysis_result(result)
     begin
-      parsed = JSON.parse(result)
+      # Clean the result to extract JSON
+      json_match = result.match(/\{[^}]*\}/)
+      json_string = json_match ? json_match[0] : result
+      
+      parsed = JSON.parse(json_string)
       {
-        violence_score: parsed['violence_score'].to_f,
-        toxicity_score: parsed['toxicity_score'].to_f,
-        safe: parsed['safe']
+        violence_score: [parsed['violence_score'].to_f, 1.0].min,
+        toxicity_score: [parsed['toxicity_score'].to_f, 1.0].min,
+        safe: parsed['safe'] == true || parsed['safe'] == 'true'
       }
-    rescue JSON::ParserError
-      # Fallback parsing if JSON is malformed
+    rescue JSON::ParserError => e
+      puts "JSON parse error: #{e.message}, result: #{result}"
+      # Fallback parsing
       violence_match = result.match(/violence_score['":]?\s*([0-9.]+)/)
       toxicity_match = result.match(/toxicity_score['":]?\s*([0-9.]+)/)
       safe_match = result.match(/safe['":]?\s*(true|false)/)
 
       {
-        violence_score: violence_match ? violence_match[1].to_f : 0.0,
-        toxicity_score: toxicity_match ? toxicity_match[1].to_f : 0.0,
+        violence_score: violence_match ? [violence_match[1].to_f, 1.0].min : 0.0,
+        toxicity_score: toxicity_match ? [toxicity_match[1].to_f, 1.0].min : 0.0,
         safe: safe_match ? safe_match[1] == 'true' : true
       }
     end
