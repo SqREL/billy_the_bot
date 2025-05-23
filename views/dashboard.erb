@@ -1,5 +1,13 @@
 <% @page_title = "Dashboard" %>
 
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Dashboard</h2>
+    <div class="d-flex align-items-center">
+        <span class="badge bg-success me-2">Online</span>
+        <span class="text-muted">Admin: <%= session[:admin_username] %></span>
+    </div>
+</div>
+
 <!-- Stats Cards -->
 <div class="row mb-4">
     <div class="col-lg-3 col-md-6 mb-3">
@@ -9,13 +17,13 @@
                     <i class="fas fa-users"></i>
                 </div>
                 <div>
-                    <h3 class="mb-0" id="total-users"><%= @stats[:total_users] %></h3>
+                    <h3 class="mb-0"><%= @stats[:total_users] %></h3>
                     <p class="text-muted mb-0">Total Users</p>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="stat-card p-3">
             <div class="d-flex align-items-center">
@@ -23,13 +31,13 @@
                     <i class="fas fa-user-check"></i>
                 </div>
                 <div>
-                    <h3 class="mb-0 text-success" id="active-users"><%= @stats[:active_users] %></h3>
+                    <h3 class="mb-0 text-success"><%= @stats[:active_users] %></h3>
                     <p class="text-muted mb-0">Active Users (24h)</p>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="stat-card p-3">
             <div class="d-flex align-items-center">
@@ -37,13 +45,13 @@
                     <i class="fas fa-comments"></i>
                 </div>
                 <div>
-                    <h3 class="mb-0 text-info" id="total-messages"><%= @stats[:total_messages] %></h3>
+                    <h3 class="mb-0 text-info"><%= @stats[:total_messages] %></h3>
                     <p class="text-muted mb-0">Total Messages</p>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="stat-card p-3">
             <div class="d-flex align-items-center">
@@ -51,7 +59,7 @@
                     <i class="fas fa-flag"></i>
                 </div>
                 <div>
-                    <h3 class="mb-0 text-warning" id="flagged-messages"><%= @stats[:flagged_messages] %></h3>
+                    <h3 class="mb-0 text-warning"><%= @stats[:flagged_messages] %></h3>
                     <p class="text-muted mb-0">Flagged Messages</p>
                 </div>
             </div>
@@ -74,7 +82,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="stat-card p-3">
             <div class="d-flex align-items-center">
@@ -88,7 +96,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="stat-card p-3">
             <div class="d-flex align-items-center">
@@ -102,7 +110,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="stat-card p-3">
             <div class="d-flex align-items-center">
@@ -203,7 +211,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-6 mb-4">
         <div class="stat-card p-4">
             <h5 class="mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Recent Moderation</h5>
@@ -221,7 +229,7 @@
                         <% ModerationLog.includes(:user).order(created_at: :desc).limit(5).each do |log| %>
                         <tr>
                             <td>
-                                <span class="badge bg-<%= 
+                                <span class="badge bg-<%=
                                     case log.action
                                     when 'banned' then 'danger'
                                     when 'warned' then 'warning text-dark'
@@ -338,7 +346,7 @@ function showBroadcastModal() {
 function submitBulkPoints() {
     const form = document.getElementById('bulkPointsForm');
     const formData = new FormData(form);
-    
+
     // Implementation would make API call to bulk give points
     showToast('Bulk points distribution started!', 'success');
     bootstrap.Modal.getInstance(document.getElementById('bulkPointsModal')).hide();
@@ -347,7 +355,7 @@ function submitBulkPoints() {
 function submitBroadcast() {
     const form = document.getElementById('broadcastForm');
     const formData = new FormData(form);
-    
+
     // Implementation would make API call to broadcast message
     showToast('Broadcast message sent!', 'success');
     bootstrap.Modal.getInstance(document.getElementById('broadcastModal')).hide();
@@ -357,7 +365,7 @@ function submitBroadcast() {
 function timeAgoInWords(date) {
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
-    
+
     if (diffInSeconds < 60) return `${diffInSeconds} seconds`;
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours`;

@@ -13,7 +13,9 @@ class User < ActiveRecord::Base
   end
 
   def muted?
-    status == 'muted' && banned_until && banned_until > Time.current
+    return false unless status == 'muted'
+    return false unless banned_until
+    banned_until > Time.current
   end
 
   def can_send_messages?
@@ -97,11 +99,17 @@ class Message < ActiveRecord::Base
   scope :recent, -> { where('created_at > ?', 1.hour.ago) }
 
   def violent?
-    violence_score && violence_score > ENV['VIOLENCE_THRESHOLD'].to_f
+    return false unless violence_score
+    violence_score > ENV['VIOLENCE_THRESHOLD'].to_f
   end
 
   def toxic?
-    toxicity_score && toxicity_score > ENV['TOXICITY_THRESHOLD'].to_f
+    return false unless toxicity_score
+    toxicity_score > ENV['TOXICITY_THRESHOLD'].to_f
+  end
+  
+  def text
+    content
   end
 end
 
@@ -109,19 +117,6 @@ class ModerationLog < ActiveRecord::Base
   belongs_to :user, foreign_key: :user_id, primary_key: :telegram_id
   belongs_to :chat_session, foreign_key: :chat_id, primary_key: :chat_id
   belongs_to :message, optional: true
-
-  enum :action, {
-    warned: 0,
-    muted: 1,
-    banned: 2,
-    deleted_message: 3,
-    unbanned: 4,
-    promoted: 5,
-    demoted: 6,
-    points_given: 7,
-    points_taken: 8,
-    kicked: 9
-  }
 end
 
 class PointTransaction < ActiveRecord::Base
@@ -130,12 +125,12 @@ class PointTransaction < ActiveRecord::Base
   belongs_to :admin_user, class_name: 'User', foreign_key: :admin_id, primary_key: :telegram_id, optional: true
 
   enum :transaction_type, {
-    earned: 0,
-    spent: 1,
-    admin_given: 2,
-    admin_taken: 3,
-    message_reward: 4,
-    activity_bonus: 5
+    earned: 'earned',
+    spent: 'spent', 
+    admin_given: 'admin_given',
+    admin_taken: 'admin_taken',
+    message_reward: 'message_reward',
+    activity_bonus: 'activity_bonus'
   }
 
   scope :recent, -> { where('created_at > ?', 30.days.ago) }
@@ -145,11 +140,11 @@ class MessageTemplate < ActiveRecord::Base
   belongs_to :creator, class_name: 'User', foreign_key: :created_by, primary_key: :telegram_id, optional: true
 
   enum :template_type, {
-    text: 0,
-    poll: 1,
-    quiz: 2,
-    photo: 3,
-    announcement: 4
+    text: 'text',
+    poll: 'poll',
+    quiz: 'quiz', 
+    photo: 'photo',
+    announcement: 'announcement'
   }
 
   scope :active, -> { where(active: true) }

@@ -2,7 +2,7 @@ require 'active_record'
 require 'sqlite3'
 require 'fileutils'
 
-database_url = ENV['DATABASE_URL'] || 'sqlite3://db/bot.sqlite3'
+database_url = ENV['DATABASE_URL'] || 'sqlite3:///Users/vmelnychuk/other/billy_the_bot/db/test.sqlite3'
 
 begin
   ActiveRecord::Base.establish_connection(database_url)
@@ -11,6 +11,7 @@ begin
   ActiveRecord::Base.connection.execute("SELECT 1")
   puts "✅ Database connection established"
 rescue => e
+  puts database_url
   puts "❌ Database connection failed: #{e.message}"
   puts "Creating database..."
 end

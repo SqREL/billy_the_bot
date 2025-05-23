@@ -26,15 +26,24 @@ class AdminHandler
   private
 
   def handle_ban_command(message, admin, args)
-    return send_error(message, "Usage: /ban @username [reason]") if args.empty?
+    if args.empty?
+      send_error(message, "Usage: /ban @username [reason]")
+      return true
+    end
 
     username = extract_username(args[0])
     reason = args[1..].join(' ') || "No reason provided"
 
     target_user = User.find_by(username: username)
-    return send_error(message, "User not found") unless target_user
+    unless target_user
+      send_error(message, "User not found")
+      return true
+    end
 
-    return send_error(message, "Cannot ban admins") if target_user.admin?
+    if target_user.admin?
+      send_error(message, "Cannot ban admins")
+      return true
+    end
 
     target_user.update!(status: :banned, banned_until: nil)
     
@@ -73,15 +82,26 @@ class AdminHandler
   end
 
   def handle_mute_command(message, admin, args)
-    return send_error(message, "Usage: /mute @username [duration_hours] [reason]") if args.empty?
+    if args.empty?
+      send_error(message, "Usage: /mute @username [duration_hours] [reason]")
+      return true
+    end
 
     username = extract_username(args[0])
     duration_hours = args[1]&.to_i || 1
-    reason = args[2..].join(' ') || "No reason provided"
+    reason = (args[2..] || []).join(' ')
+    reason = "No reason provided" if reason.empty?
 
     target_user = User.find_by(username: username)
-    return send_error(message, "User not found") unless target_user
-    return send_error(message, "Cannot mute admins") if target_user.admin?
+    unless target_user
+      send_error(message, "User not found")
+      return true
+    end
+    
+    if target_user.admin?
+      send_error(message, "Cannot mute admins")
+      return true
+    end
 
     target_user.update!(
       status: :muted, 
@@ -127,16 +147,26 @@ class AdminHandler
   end
 
   def handle_promote_command(message, admin, args)
-    return unless admin.admin? # Only admins can promote
-    return send_error(message, "Usage: /promote @username [moderator|admin]") if args.empty?
+    return nil unless admin.admin? # Only admins can promote
+    
+    if args.empty?
+      send_error(message, "Usage: /promote @username [moderator|admin]")
+      return true
+    end
 
     username = extract_username(args[0])
     role = args[1] || 'moderator'
     
-    return send_error(message, "Invalid role") unless %w[moderator admin].include?(role)
+    unless %w[moderator admin].include?(role)
+      send_error(message, "Invalid role")
+      return true
+    end
 
     target_user = User.find_by(username: username)
-    return send_error(message, "User not found") unless target_user
+    unless target_user
+      send_error(message, "User not found")
+      return true
+    end
 
     result = @user_service.promote_user(target_user.telegram_id, role, admin.telegram_id)
     

@@ -142,12 +142,16 @@ class PointsService
     current_date = Date.current
 
     loop do
-      break unless user.messages.where('DATE(created_at) = ?', current_date - days_active.days).exists?
+      date_to_check = current_date - days_active.days
+      has_message = user.messages.where('DATE(created_at) = ?', date_to_check).exists?
+      break unless has_message
       days_active += 1
       break if days_active > 30 # Max check 30 days
     end
 
     case days_active
+    when 0
+      0  # No activity
     when 1..6
       days_active * 5  # 5 points per day
     when 7..13

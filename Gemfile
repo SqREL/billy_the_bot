@@ -23,7 +23,11 @@ gem 'erb'
 gem 'bcrypt'
 gem 'rack-cors'
 
-group :development do
+group :development, :test do
   gem 'pry'
   gem 'rubocop'
+  gem 'rack-test'
+  gem 'rspec'
+  gem 'factory_bot'
+  gem 'database_cleaner-active_record'
 end

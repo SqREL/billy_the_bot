@@ -79,27 +79,27 @@
             <h4 class="mb-4"><i class="fas fa-robot me-2"></i>Bot Admin</h4>
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link <%= 'active' if request.path_info == '/' %>" href="/">
+                    <a class="nav-link <%= request.path_info == '/' ? 'active' : '' %>" href="/">
                         <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <%= 'active' if request.path_info.start_with?('/users') %>" href="/users">
+                    <a class="nav-link <%= request.path_info == '/users' ? 'active' : '' %>" href="/users">
                         <i class="fas fa-users me-2"></i>Users
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <%= 'active' if request.path_info.start_with?('/templates') %>" href="/templates">
+                    <a class="nav-link <%= request.path_info == '/templates' ? 'active' : '' %>" href="/templates">
                         <i class="fas fa-comments me-2"></i>Message Templates
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <%= 'active' if request.path_info == '/leaderboard' %>" href="/leaderboard">
+                    <a class="nav-link <%= request.path_info == '/leaderboard' ? 'active' : '' %>" href="/leaderboard">
                         <i class="fas fa-trophy me-2"></i>Leaderboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <%= 'active' if request.path_info == '/analytics' %>" href="/analytics">
+                    <a class="nav-link <%= request.path_info == '/analytics' ? 'active' : '' %>" href="/analytics">
                         <i class="fas fa-chart-bar me-2"></i>Analytics
                     </a>
                 </li>
@@ -138,13 +138,13 @@
                     </div>
                 </div>
             `;
-            
+
             if (!document.getElementById('toast-container')) {
-                document.body.insertAdjacentHTML('beforeend', 
+                document.body.insertAdjacentHTML('beforeend',
                     '<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>'
                 );
             }
-            
+
             document.getElementById('toast-container').insertAdjacentHTML('beforeend', toast);
             const toastElement = document.querySelector('.toast:last-child');
             new bootstrap.Toast(toastElement).show();

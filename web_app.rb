@@ -19,27 +19,36 @@ configure do
   set :bind, '0.0.0.0'
 end
 
+configure :test do
+  set :raise_errors, true
+  set :dump_errors, false
+  set :show_exceptions, false
+end
+
 # Admin credentials
 ADMIN_PASSWORD = ENV['ADMIN_PASSWORD'] || 'admin123'
 ADMIN_USERNAME = ENV['ADMIN_USERNAME'] || 'admin'
 
 # Authentication helpers
-def authenticated?
-  session[:admin_authenticated] && session[:expires_at] && session[:expires_at] > Time.now.to_i
-end
+helpers do
+  def authenticated?
+    session[:admin_authenticated] && session[:expires_at] && session[:expires_at] > Time.now.to_i
+  end
 
-def require_auth!
-  halt 401, json(error: 'Unauthorized') unless authenticated?
-end
+  def require_auth!
+    halt 401, json(error: 'Unauthorized') unless authenticated?
+  end
 
-def extend_session!
-  session[:expires_at] = 24.hours.from_now.to_i
+  def extend_session!
+    session[:expires_at] = 24.hours.from_now.to_i
+  end
 end
 
 # Authentication middleware
 before do
-  exempt_paths = ['/login'] + Dir.glob('public/**/*').map { |f| f.sub('public', '') }
-  pass if exempt_paths.any? { |path| request.path_info.start_with?(path) }
+  # Skip authentication for login routes and static assets
+  next if request.path_info.start_with?('/login')
+  next if request.path_info.start_with?('/css/', '/js/', '/images/')
   redirect '/login' unless authenticated?
 end
 
@@ -79,7 +88,7 @@ post '/login' do
 end
 
 get '/logout' do
-  AdminSession.where(session_id: session.id.to_s).delete_all if session.id
+  AdminSession.where(session_id: session.id.to_s).destroy_all if session.id
   session.clear
   redirect '/login'
 end
@@ -90,22 +99,22 @@ get '/users' do
   @page = (params[:page] || 1).to_i
   @per_page = 20
   @search = params[:search]
-  
+
   @users = User.includes(:point_transactions)
-  @users = @users.where('username ILIKE ? OR first_name ILIKE ?', "%#{@search}%", "%#{@search}%") if @search.present?
+  @users = @users.where('username LIKE ? OR first_name LIKE ?', "%#{@search}%", "%#{@search}%") if @search.present?
   @users = @users.order(created_at: :desc).limit(@per_page).offset((@page - 1) * @per_page)
-  
+
   erb :users
 end
 
 get '/users/:id' do
   extend_session!
   @user = User.find_by(telegram_id: params[:id])
-  halt 404, "User not found" unless @user
-  
+  halt 404, 'User not found' unless @user
+
   @recent_activity = @user.recent_points_activity
   @moderation_logs = @user.moderation_logs.includes(:chat_session).order(created_at: :desc).limit(20)
-  
+
   erb :user_detail
 end
 
@@ -117,10 +126,10 @@ post '/users/:id/ban' do
 
   reason = params[:reason] || 'Banned via admin panel'
   duration = params[:duration]
-  
+
   banned_until = duration ? duration.to_i.hours.from_now : nil
   user.update!(status: :banned, banned_until: banned_until)
-  
+
   ModerationLog.create!(
     user_id: user.telegram_id,
     chat_id: 0,
@@ -130,7 +139,7 @@ post '/users/:id/ban' do
     details: { duration: duration, via: 'admin_panel' }
   )
 
-  json(success: true, message: "User banned successfully")
+  json(success: true, message: 'User banned successfully')
 end
 
 post '/users/:id/unban' do
@@ -139,7 +148,7 @@ post '/users/:id/unban' do
   halt 404, json(error: 'User not found') unless user
 
   user.update!(status: :active, banned_until: nil, warning_count: 0)
-  
+
   ModerationLog.create!(
     user_id: user.telegram_id,
     chat_id: 0,
@@ -149,7 +158,7 @@ post '/users/:id/unban' do
     details: { via: 'admin_panel' }
   )
 
-  json(success: true, message: "User unbanned successfully")
+  json(success: true, message: 'User unbanned successfully')
 end
 
 post '/users/:id/mute' do
@@ -159,9 +168,9 @@ post '/users/:id/mute' do
 
   duration = (params[:duration] || 1).to_i
   reason = params[:reason] || 'Muted via admin panel'
-  
+
   user.update!(status: :muted, banned_until: duration.hours.from_now)
-  
+
   ModerationLog.create!(
     user_id: user.telegram_id,
     chat_id: 0,
@@ -184,11 +193,11 @@ post '/users/:id/points' do
   reason = params[:reason] || 'Points adjusted via admin panel'
   action = params[:action]
 
-  if action == 'add'
-    result = PointsService.award_points(user, amount, reason, session[:admin_username])
-  else
-    result = PointsService.deduct_points(user, amount, reason, session[:admin_username])
-  end
+  result = if action == 'add'
+             PointsService.award_points(user, amount, reason, session[:admin_username])
+           else
+             PointsService.deduct_points(user, amount, reason, session[:admin_username])
+           end
 
   if result[:success]
     json(success: true, message: result[:message], new_total: result[:new_total])
@@ -203,7 +212,7 @@ post '/users/:id/reset_warnings' do
   halt 404, json(error: 'User not found') unless user
 
   user.update!(warning_count: 0, status: :active)
-  
+
   ModerationLog.create!(
     user_id: user.telegram_id,
     chat_id: 0,
@@ -226,7 +235,7 @@ post '/users/:id/promote' do
 
   old_role = user.role
   user.update!(role: new_role)
-  
+
   ModerationLog.create!(
     user_id: user.telegram_id,
     chat_id: 0,
@@ -253,7 +262,7 @@ end
 
 post '/templates' do
   require_auth!
-  
+
   template = MessageTemplate.new(
     name: params[:name],
     template_type: params[:template_type],
@@ -278,14 +287,12 @@ post '/templates/:id/send' do
   require_auth!
   template = MessageTemplate.find(params[:id])
   chat_ids = params[:chat_ids].split(',').map(&:strip)
-  
+
   sent_count = 0
   chat_ids.each do |chat_id|
-    begin
-      sent_count += 1
-    rescue => e
-      # Log error
-    end
+    sent_count += 1
+  rescue StandardError => e
+    # Log error
   end
 
   json(success: true, message: "Template sent to #{sent_count} chats")
@@ -339,7 +346,7 @@ def get_user_analytics
     by_role: User.group(:role).count,
     by_status: User.group(:status).count,
     registrations_last_30_days: User.where('created_at > ?', 30.days.ago)
-                                    .group("DATE(created_at)")
+                                    .group('DATE(created_at)')
                                     .count
   }
 end
@@ -350,27 +357,27 @@ def get_points_analytics
     total_spent: PointTransaction.where('amount < 0').sum(:amount).abs,
     transactions_by_type: PointTransaction.group(:transaction_type).count,
     top_earners: User.order(points: :desc).limit(10)
-                    .pluck(:first_name, :username, :points),
+                     .pluck(:first_name, :username, :points),
     points_distribution_last_7_days: PointTransaction.where('created_at > ?', 7.days.ago)
-                                                    .group("DATE(created_at)")
-                                                    .sum(:amount)
+                                                     .group('DATE(created_at)')
+                                                     .sum(:amount)
   }
 end
 
 def get_activity_analytics
   {
     messages_by_day: Message.where('created_at > ?', 30.days.ago)
-                           .group("DATE(created_at)")
-                           .count,
+                            .group('DATE(created_at)')
+                            .count,
     most_active_chats: ChatSession.joins(:messages)
-                                 .group('chat_sessions.chat_title', 'chat_sessions.chat_id')
-                                 .count('messages.id')
-                                 .sort_by { |_, count| -count }
-                                 .first(10),
+                                  .group('chat_sessions.chat_title', 'chat_sessions.chat_id')
+                                  .count('messages.id')
+                                  .sort_by { |_, count| -count }
+                                  .first(10),
     moderation_actions_by_day: ModerationLog.where('created_at > ?', 30.days.ago)
-                                           .group("DATE(created_at)")
-                                           .group(:action)
-                                           .count
+                                            .group('DATE(created_at)')
+                                            .group(:action)
+                                            .count
   }
 end
 
@@ -378,22 +385,23 @@ end
 helpers do
   def time_ago_in_words(time)
     return 'never' unless time
-    
+
     diff = Time.current - time
     case diff
     when 0..59
       "#{diff.to_i} seconds"
     when 60..3599
       "#{(diff / 60).to_i} minutes"
-    when 3600..86399
+    when 3600..86_399
       "#{(diff / 3600).to_i} hours"
     else
-      "#{(diff / 86400).to_i} days"
+      "#{(diff / 86_400).to_i} days"
     end
   end
 
   def truncate_text(text, length = 30)
     return '' unless text
+
     text = text.to_s
     text.length > length ? text[0...length] + '...' : text
   end
@@ -404,7 +412,7 @@ Thread.new do
   loop do
     begin
       AdminSession.cleanup_expired
-    rescue => e
+    rescue StandardError => e
       puts "Session cleanup error: #{e.message}"
     end
     sleep 3600

@@ -117,7 +117,8 @@ class UserService
 
   def self.cleanup_expired_bans
     expired_users = User.where('banned_until IS NOT NULL AND banned_until <= ?', Time.current)
-    expired_users.update_all(status: 0, banned_until: nil)
-    expired_users.count
+    count = expired_users.count
+    expired_users.update_all(status: User.statuses[:active], banned_until: nil)
+    count
   end
 end
