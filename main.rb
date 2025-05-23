@@ -39,6 +39,37 @@ unless TELEGRAM_TOKEN && BOT_USERNAME
 end
 
 # DEFINE ALL METHODS FIRST
+def handle_start_command(bot, message, user)
+  welcome_text = <<~TEXT
+    👋 Hi #{user.first_name}! I'm an advanced AI bot powered by Claude.
+
+    🤖 Chat Features:
+    • Tag me with @#{ENV['BILLY_BOT_NAME']} to chat with Claude
+    • I help moderate chats and provide helpful responses
+
+    💰 Points System:
+    • Earn points by being active: #{user.points} points
+    • Use /daily for daily bonus
+    • Use /points to see your stats
+    • Use /leaderboard to see top users
+
+    🎯 Commands:
+    • /help - See all commands
+    • /status - Check your account
+    • /points - View your points
+    • /daily - Claim daily bonus
+
+    Your current role: #{user.role.capitalize}
+    Rank: ##{PointsService.get_user_rank(user)}
+  TEXT
+
+  bot.api.send_message(
+    chat_id: message.chat.id,
+    text: welcome_text,
+    reply_to_message_id: message.message_id
+  )
+end
+
 def handle_help_command(bot, message, user)
   help_text = <<~TEXT
     🤖 Bot Commands
@@ -88,39 +119,6 @@ def handle_help_command(bot, message, user)
     chat_id: message.chat.id,
     text: help_text,
     reply_to_message_id: message.message_id
-    # Removed parse_mode to avoid Markdown parsing issues
-  )
-end
-
-def handle_start_command(bot, message, user)
-  welcome_text = <<~TEXT
-    👋 Hi #{user.first_name}! I'm an advanced AI bot powered by Claude.
-
-    🤖 Chat Features:
-    • Tag me with @#{ENV['BILLY_BOT_NAME']} to chat with Claude
-    • I help moderate chats and provide helpful responses
-
-    💰 Points System:
-    • Earn points by being active: #{user.points} points
-    • Use /daily for daily bonus
-    • Use /points to see your stats
-    • Use /leaderboard to see top users
-
-    🎯 Commands:
-    • /help - See all commands
-    • /status - Check your account
-    • /points - View your points
-    • /daily - Claim daily bonus
-
-    Your current role: #{user.role.capitalize}
-    Rank: ##{PointsService.get_user_rank(user)}
-  TEXT
-
-  bot.api.send_message(
-    chat_id: message.chat.id,
-    text: welcome_text,
-    reply_to_message_id: message.message_id
-    # Removed parse_mode to avoid Markdown parsing issues
   )
 end
 
@@ -162,18 +160,17 @@ def handle_status_command(bot, message, user)
     chat_id: message.chat.id,
     text: status_text,
     reply_to_message_id: message.message_id
-    # Removed parse_mode to avoid Markdown parsing issues
   )
 end
 
 def handle_claude_mention(bot, message, user, chat_session, text, claude_service, logger)
   # Extract the query (everything after the bot's username)
-  query = text.split("@#{ENV['BILLY_BOT_NAME']}", 2)[1].to_s.strip
+  query = text #.split("@#{ENV['BILLY_BOT_NAME']}", 2)[1].to_s.strip
   
   if query.empty?
     bot.api.send_message(
       chat_id: message.chat.id,
-      text: "Hi! Please ask me a question after tagging me. For example: @#{ENV['BILLY_BOT_NAME']} What's the weather like?",
+      text: "Питай мене шось, йобана",
       reply_to_message_id: message.message_id
     )
     return
@@ -182,7 +179,7 @@ def handle_claude_mention(bot, message, user, chat_session, text, claude_service
   # Show typing indicator
   processing_message = bot.api.send_message(
     chat_id: message.chat.id,
-    text: "🤔 Thinking...",
+    text: "Піжди єбать...",
     reply_to_message_id: message.message_id
   )
 
@@ -232,10 +229,9 @@ def handle_claude_mention(bot, message, user, chat_session, text, claude_service
         parts = claude_response.scan(/.{1,4000}/)
         parts.each_with_index do |part, index|
           if index == 0
-            # Edit first message - processing_message is already a Message object
             bot.api.edit_message_text(
               chat_id: message.chat.id,
-              message_id: processing_message.message_id,  # Direct access, no .result
+              message_id: processing_message.message_id,
               text: part
             )
           else
@@ -248,17 +244,16 @@ def handle_claude_mention(bot, message, user, chat_session, text, claude_service
           sleep(0.1)
         end
       else
-        # Edit the "thinking" message with Claude's response
         bot.api.edit_message_text(
           chat_id: message.chat.id,
-          message_id: processing_message.message_id,  # Direct access, no .result
+          message_id: processing_message.message_id,
           text: claude_response
         )
       end
     else
       bot.api.edit_message_text(
         chat_id: message.chat.id,
-        message_id: processing_message.message_id,  # Direct access, no .result
+        message_id: processing_message.message_id,
         text: "🤖 I couldn't generate a response right now. Please try asking differently."
       )
     end
@@ -281,7 +276,7 @@ def handle_claude_mention(bot, message, user, chat_session, text, claude_service
     begin
       bot.api.edit_message_text(
         chat_id: message.chat.id,
-        message_id: processing_message.message_id,  # Direct access, no .result
+        message_id: processing_message.message_id,
         text: error_message
       )
     rescue => edit_error
@@ -317,6 +312,16 @@ def handle_pending_deletions(bot, chat_session)
   chat_session.set_setting('pending_deletions', [])
 end
 
+def mention_by_nic_name?(text)
+   nicknames = [
+    'billie', 'billy', 'біллі', 'білі', 'бiллi',
+    'наш друган', 'друган', 'бот', 'bot', 'помічник', 'assistant',
+    'claude', 'клод'
+  ]
+  text_lower = text.downcase
+  nicknames.any? { |nickname| text_lower.include?(nickname.downcase) }
+end
+
 # Initialize services
 logger.info("Initializing services...")
 begin
@@ -342,6 +347,13 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
       case message
       when Telegram::Bot::Types::Message
         next unless message.text || message.caption
+
+        # Skip old messages (older than 24 hours)
+        message_time = Time.at(message.date)
+        if Time.current - message_time > 24.hours
+          logger.debug("Skipping old message from #{message.from.id}: #{(Time.current - message_time).to_i} seconds old")
+          next
+        end
 
         # Get or create user and chat
         user = UserService.find_or_create_user(message.from)
@@ -432,7 +444,7 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
         stored_message = moderation_service.process_message(message, user, chat_session)
 
         # Handle Claude mentions
-        if text.include?("@#{BOT_USERNAME}")
+        if text.include?("@#{BOT_USERNAME}") || mention_by_nic_name?(text)
           logger.info("Claude mention detected from user #{user.telegram_id}")
           handle_claude_mention(bot, message, user, chat_session, text, claude_service, logger)
         end
@@ -453,7 +465,7 @@ Telegram::Bot::Client.run(TELEGRAM_TOKEN) do |bot|
                         when /JSON/
                           "📝 Data processing error. Please try again."
                         else
-                          "🤖 Temporary error. Please try again or contact admin. #{e.message}"
+                          "🤖 Temporary error. Please try again or contact admin."
                         end
         
         bot.api.send_message(
